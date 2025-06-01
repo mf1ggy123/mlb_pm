@@ -1,0 +1,153 @@
+html, body {
+    overflow: hidden; /* Disable scrolling */
+    height: 100%; /* Ensure the content fits within the viewport */
+    margin: 0; /* Remove any default margin */
+    padding: 0; /* Remove any default padding */
+}
+
+.container {
+    display: flex;
+    flex-direction: column; /* Stack items vertically */
+    align-items: center; /* Center items horizontally */
+    height: 100vh; /* Make the container fill the entire viewport height */
+    width: 100vw; /* Make the container fill the entire viewport width */
+    overflow: hidden; /* Prevent scrolling */
+    box-sizing: border-box; /* Include padding and border in the element's dimensions */
+}
+
+.circle {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 2px solid black;
+    display: inline-block;
+    margin: 5px;
+    cursor: pointer;
+}
+.circle.red {
+    background-color: red;
+}
+.circle.green {
+    background-color: green;
+}
+.circle.white {
+    background-color: white;
+}
+.diamond-layout {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 100px auto; /* Increase the top margin to move it lower */
+    background-color: green; /* Field background */
+    transform: rotate(45deg); /* Rotate the diamond */
+}
+
+.base {
+    position: absolute;
+    width: 35px;
+    height: 35px;
+    background-color: white;
+    border: 2px solid black;
+    transform: rotate(-45deg); /* Rotate bases back to square */
+    cursor: pointer;
+}
+
+.base.occupied {
+    background-color: blue; /* Occupied base color */
+}
+
+/* Positioning bases */
+.base:nth-child(1) { /* Home base */
+    top: 0%;
+    right: 0;
+    transform:  rotate(0deg);
+}
+
+.base:nth-child(2) { /* First base */
+    top: 0;
+    left: 0;
+    transform:  rotate(0deg);
+}
+
+.base:nth-child(3) { /* Second base */
+    bottom: 0;
+    left: 0;
+    transform:  rotate(0deg);
+}
+
+.base:nth-child(4) { /* Third base */
+    bottom: 0;
+    right: 0;
+    transform:rotate(0deg);
+}
+
+.scoreboard {
+    text-align: center;
+}
+
+.outs-strikes-balls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px; /* Add spacing between sections */
+    margin-top: 0px;
+}
+
+.outs, .strikes, .balls {
+    text-align: center;
+}
+
+.runner-actions1 {
+    position: absolute;
+    top: -220%; /* Align vertically with first base */
+    left: 60%; /* Position to the right of first base */
+    right: 100%;
+    bottom: 10%;
+    gap: 5px; /* Add spacing between buttons */
+    rotate: -45deg; /* Rotate the grid to align with the diamond */
+    flex-direction: column;
+}
+
+.runner-actions1 button {
+    font-size: 16px; /* Increase font size for better visibility */
+    cursor: pointer;
+    text-align: center;
+    width: 100px; /* Set the width of the button */
+    height: 70px;
+}
+
+.runner-actions2 {
+    position: absolute;
+    top: -215%; /* Align vertically with the base */
+    left: -545%; /* Position to the right of the base */
+    display: flex; /* Use flexbox for horizontal alignment */
+    flex-direction: row; /* Ensure buttons are in a horizontal line */
+    rotate: -45deg; /* Rotate the grid to align with the diamond */
+}
+
+.runner-actions3 {
+    position: absolute;
+    top: 390%; /* Align vertically with first base */
+    left: -100%; /* Position to the right of first base */
+    right: 100%;
+    bottom: 10%;
+    gap: 5px; /* Add spacing between buttons */
+    rotate: -45deg; /* Rotate the grid to align with the diamond */
+    flex-direction: column;
+}
+
+.runner-actions2 button {
+    font-size: 16px; /* Increase font size for better visibility */
+    cursor: pointer;
+    text-align: center;
+    width: 100px; /* Set the width of the button */
+    height: 70px;
+}
+
+.runner-actions3 button {
+    font-size: 16px; /* Increase font size for better visibility */
+    cursor: pointer;
+    text-align: center;
+    width: 100px; /* Set the width of the button */
+    height: 70px;
+}
