@@ -1,200 +1,227 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ScoreboardProps } from '../types';
-import './Scoreboard.css'; // Assuming you have a CSS file for styling
+import './Scoreboard.css';
 
-const Scoreboard: React.FC<ScoreboardProps> = ({ inning, isTop, homeScores, awayScores, outs, strikes, balls }) => {
-    const [strikeCount, setStrikeCount] = useState(strikes); // Track the number of strikes
-    const [ballCount, setBallCount] = useState(balls); // Track the number of balls
-    const [outCount, setOutCount] = useState(outs); // Track the number of outs
-    const [currentInning, setCurrentInning] = useState(inning);
-    const [isTopInning, setIsTopInning] = useState(isTop);
-    const [bases, setBases] = useState([false, false, false, false]); // Track occupied bases (home, first, second, third)
-    const [homeScore, setHomeScore] = useState(homeScores); // Track home team score
-    const [awayScore, setAwayScore] = useState(awayScores); // Track away team score
-
-
+const Scoreboard: React.FC<ScoreboardProps> = ({
+    inning,
+    isTop,
+    homeScores,
+    awayScores,
+    outs,
+    strikes,
+    balls,
+    bases,
+    onUpdate,
+}) => {
+    // Handlers now call onUpdate with new state, no local state
 
     const handleReset = () => {
-        setStrikeCount(0);
-        setBallCount(0);
-        setOutCount(0);
-        setBases([false, false, false, false]); // Reset all bases
-    }
+        onUpdate({
+            strikes: 0,
+            balls: 0,
+            outs: 0,
+            bases: [false, false, false, false],
+        });
+    };
+
     const handleResetCount = () => {
-        setStrikeCount(0);
-        setBallCount(0);
-    }
+        onUpdate({
+            strikes: 0,
+            balls: 0,
+        });
+    };
+
     const handleScore = (score: number, isHome: boolean) => {
-        
         if (isHome) {
-            setHomeScore((prevScore) => prevScore + score); // Increment home team score
+            onUpdate({ homeScores: homeScores + score });
         } else {
-            setAwayScore((prevScore) => prevScore + score); // Increment away team score
+            onUpdate({ awayScores: awayScores + score });
         }
     };
+
     const toggleInning = () => {
-        if (!isTopInning) {
-            // If switching from bottom to top, increment the inning
-            setCurrentInning((prevInning) => (prevInning < 9 ? prevInning + 1 : prevInning));
+        if (!isTop) {
+            onUpdate({
+                isTop: true,
+                inning: inning < 9 ? inning + 1 : inning,
+                strikes: 0,
+                balls: 0,
+                outs: 0,
+                bases: [false, false, false, false],
+            });
+        } else {
+            onUpdate({
+                isTop: false,
+                strikes: 0,
+                balls: 0,
+                outs: 0,
+                bases: [false, false, false, false],
+            });
         }
-        setIsTopInning((prevIsTop) => !prevIsTop); // Toggle between top and bottom
-        handleReset(); // Reset counts and bases when switching innings
     };
-    
+
     const handleBaseClick = (index: number) => {
-        setBases((prevBases) =>
-            prevBases.map((base, i) => (i === index ? !base : base)) // Toggle the clicked base
-        );
+        console.log(`Base ${index} clicked`);
+        const newBases = bases.map((base, i) => (i === index ? !base : base));
+        onUpdate({ bases: newBases });
     };
 
     const handleStrikeClick = () => {
-        if (strikeCount < 2) {
-            setStrikeCount((prevCount) => prevCount + 1); // Increment strike count
+        if (strikes < 2) {
+            onUpdate({ strikes: strikes + 1 });
         } else {
-            setStrikeCount(0); // Reset strikes
-            setOutCount((prevOuts) => prevOuts + 1); // Increment outs
-            setBallCount(0); // Reset balls
-
-            if (outCount + 1 >= 3) {
-                // If 3 outs, switch to the next inning
-                setOutCount(0);
-                if (isTopInning) {
-                    setIsTopInning(false); // Switch to bottom of the inning
+            if (outs + 1 >= 3) {
+                // 3 outs, switch inning
+                if (isTop) {
+                    onUpdate({
+                        strikes: 0,
+                        balls: 0,
+                        outs: 0,
+                        isTop: false,
+                        bases: [false, false, false, false],
+                    });
                 } else {
-                    setIsTopInning(true); // Switch to top of the next inning
-                    setCurrentInning((prevInning) => (prevInning < 9 ? prevInning + 1 : prevInning));
+                    onUpdate({
+                        strikes: 0,
+                        balls: 0,
+                        outs: 0,
+                        isTop: true,
+                        inning: inning < 9 ? inning + 1 : inning,
+                        bases: [false, false, false, false],
+                    });
                 }
+            } else {
+                onUpdate({
+                    strikes: 0,
+                    balls: 0,
+                    outs: outs + 1,
+                });
             }
         }
     };
 
     const handleBallClick = () => {
-        console.log(ballCount, strikeCount, outCount, bases);
-        if (ballCount < 3) {
-            setBallCount((prevCount) => prevCount + 1); // Increment ball count
+        if (balls < 3) {
+            onUpdate({ balls: balls + 1 });
         } else {
-            setBallCount(0); // Reset balls
-            setStrikeCount(0); // Reset strikes
-
-            setBases((prevBases) => {
-                const newBases = [...prevBases];
-                if (prevBases[1]) {
-                    // If someone is on first base, move them to second base
-                    if(prevBases[2]) {
-                        // If someone is on second base, move them to third base  
-                        if(prevBases[3]) {
-                            // If someone is on third base, score a run
-                            if (isTopInning) {
-                                // Increment away score
-                                console.log("Away scores a run");
-                                handleScore(1, false);
-                            } else {
-                                // Increment home score
-                                console.log("Home scores a run");
-                                handleScore(1, true);
-                            }
-                        } 
-                        newBases[3] = true; // Occupy third base
+            // Walk: reset balls/strikes, advance runners
+            let newBases = [...bases];
+            if (bases[1]) {
+                if (bases[2]) {
+                    if (bases[3]) {
+                        // Score
+                        handleScore(1, !isTop);
+                        newBases[3] = false;
                     }
-
-                    newBases[2] = true; // Occupy second base
+                    newBases[3] = true;
                 }
-                newBases[1] = true; // Occupy first base
-                return newBases;
+                newBases[2] = true;
+            }
+            newBases[1] = true;
+            onUpdate({
+                balls: 0,
+                strikes: 0,
+                bases: newBases,
             });
         }
-        console.log(ballCount, strikeCount, outCount, bases, homeScore, awayScore);
     };
 
     const handleOutClick = () => {
-        if (outCount < 2) {
-            setOutCount((prevOuts) => prevOuts + 1); // Increment outs
-            setStrikeCount(0); // Reset strikes
-            setBallCount(0); // Reset balls
+        if (outs < 2) {
+            onUpdate({
+                outs: outs + 1,
+                strikes: 0,
+                balls: 0,
+            });
         } else {
-            // Reset outs, strikes, and balls, and switch the inning
-            setOutCount(0);
-            setStrikeCount(0);
-            setBallCount(0);
-            toggleInning();
-            // if (isTopInning) {
-            //     setIsTopInning(false); // Switch to bottom of the inning
-            // } else {
-            //     setIsTopInning(true); // Switch to top of the next inning
-            //     setCurrentInning((prevInning) => (prevInning < 9 ? prevInning + 1 : prevInning));
-            // }
+            // 3 outs, switch inning
+            if (isTop) {
+                onUpdate({
+                    outs: 0,
+                    strikes: 0,
+                    balls: 0,
+                    isTop: false,
+                    bases: [false, false, false, false],
+                });
+            } else {
+                onUpdate({
+                    outs: 0,
+                    strikes: 0,
+                    balls: 0,
+                    isTop: true,
+                    inning: inning < 9 ? inning + 1 : inning,
+                    bases: [false, false, false, false],
+                });
+            }
         }
     };
 
     const handleRunnerAction = (action: string, baseNum: number) => {
-        setBases((prevBases) => {
-            const newBases = [...prevBases]; // Copy the current state of bases
-            if (action === 'moveToSecond') {
-                if (prevBases[baseNum]) {
-                    newBases[baseNum] = false; // Remove runner from first base
-                    newBases[2] = true; // Move runner to second base
-                }
-            } else if (action === 'moveToThird') {
-                if (prevBases[baseNum]) {
-                    newBases[baseNum] = false; // Remove runner from first base
-                    newBases[3] = true; // Move runner to third base
-                }
-            } else if (action === 'score') {
-                if (prevBases[baseNum]) {
-                    newBases[baseNum] = false; // Remove runner from first base
-                    handleScore(1, !isTopInning); // Increment score for the appropriate team
-                }
-            } else if (action === 'out') {
-                if (prevBases[baseNum]) {
-                    console.log(`Runner on base ${baseNum} is out`);
-                    newBases[baseNum] = false; // Remove runner from first base
-                    handleOutClick(); // Increment outs
-                }
+        let newBases = [...bases];
+        if (action === 'moveToSecond') {
+            if (bases[baseNum]) {
+                newBases[baseNum] = false;
+                newBases[2] = true;
             }
-            else if (action === 'Homerun') {
-                // Handle a homerun: all runners score
-                const count = newBases.filter(Boolean).length;
-                handleScore(count + 1, !isTopInning); // Increment score for the team
-                newBases.fill(false); // Clear all bases
-                setStrikeCount(0);
-                setBallCount(0);
+        } else if (action === 'moveToThird') {
+            if (bases[baseNum]) {
+                newBases[baseNum] = false;
+                newBases[3] = true;
             }
-            setBases(newBases); // Update the bases state
-            return newBases;
-        });
+        } else if (action === 'score') {
+            if (bases[baseNum]) {
+                newBases[baseNum] = false;
+                handleScore(1, !isTop);
+            }
+        } else if (action === 'out') {
+            if (bases[baseNum]) {
+                newBases[baseNum] = false;
+                handleOutClick();
+            }
+        } else if (action === 'Homerun') {
+            const count = newBases.filter(Boolean).length;
+            handleScore(count + 1, !isTop);
+            newBases = [false, false, false, false];
+        }
+        console.log(`Runner action: ${action} on base ${baseNum}`);
+        console.log('New bases state:', newBases);
+        console.log('Current bases:', bases);
+        onUpdate({ bases: newBases });
+        console.log('New bases state:', newBases);
+        console.log('Current bases:', bases);
     };
 
     return (
         <div className="container">
             <div className="scoreboard">
                 <h1 className="score-header" style={{ fontSize: '30px', textAlign: 'center', margin: '5px 0' }}>
-                    Score: Home ({homeScore}) - Away ({awayScore})
+                    Score: Home ({homeScores}) - Away ({awayScores})
                 </h1>
                 <div className="inning" style={{ fontSize: '24px', textAlign: 'center', margin: '10px 0' }}>
-                    Inning: {currentInning} ({isTopInning ? 'Top' : 'Bottom'})
-                    <button 
-                        onClick={toggleInning} 
+                    Inning: {inning} ({isTop ? 'Top' : 'Bottom'})
+                    <button
+                        onClick={toggleInning}
                         style={{ fontSize: '16px', padding: '5px 10px', marginLeft: '10px' }}
                     >
                         Switch Inning
                     </button>
                 </div>
-                <button 
-            onClick={handleResetCount} 
-            style={{
-                fontSize: '16px',
-                padding: '10px 80px',
-                margin: '0px auto',
-                display: 'block',
-                backgroundColor: 'lightcoral',
-                color: 'white',
-                border: 'none',
-                borderRadius: '5px',
-                cursor: 'pointer',
-            }}
-        >
-            Reset Balls and Strikes
-        </button>
+                <button
+                    onClick={handleResetCount}
+                    style={{
+                        fontSize: '16px',
+                        padding: '10px 80px',
+                        margin: '0px auto',
+                        display: 'block',
+                        backgroundColor: 'lightcoral',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '5px',
+                        cursor: 'pointer',
+                    }}
+                >
+                    Reset Balls and Strikes
+                </button>
                 <div className="outs-strikes-balls">
                     <div className="outs">
                         <h2>Outs:</h2>
@@ -204,7 +231,7 @@ const Scoreboard: React.FC<ScoreboardProps> = ({ inning, isTop, homeScores, away
                                     key={index}
                                     className="circle"
                                     style={{
-                                        backgroundColor: index < outCount ? 'red' : 'white',
+                                        backgroundColor: index < outs ? 'red' : 'white',
                                     }}
                                 ></div>
                             ))}
@@ -218,7 +245,7 @@ const Scoreboard: React.FC<ScoreboardProps> = ({ inning, isTop, homeScores, away
                                     key={index}
                                     className="circle"
                                     style={{
-                                        backgroundColor: index < strikeCount ? 'red' : 'white',
+                                        backgroundColor: index < strikes ? 'red' : 'white',
                                     }}
                                 ></div>
                             ))}
@@ -232,7 +259,7 @@ const Scoreboard: React.FC<ScoreboardProps> = ({ inning, isTop, homeScores, away
                                     key={index}
                                     className="circle"
                                     style={{
-                                        backgroundColor: index < ballCount ? 'green' : 'white',
+                                        backgroundColor: index < balls ? 'green' : 'white',
                                     }}
                                 ></div>
                             ))}
@@ -245,26 +272,25 @@ const Scoreboard: React.FC<ScoreboardProps> = ({ inning, isTop, homeScores, away
                         <div
                             className={`base ${bases[1] ? 'occupied' : ''}`}
                             onClick={() => handleBaseClick(1)}
-                            
                         >{bases[1] && (
                             <div className="runner-actions1">
-                                <button onClick={() => handleRunnerAction('moveToSecond',1)}
+                                <button onClick={() => handleRunnerAction('moveToSecond', 1)}
                                     style={{ backgroundColor: 'lightblue' }}
-                                    >
-                                        2nd
+                                >
+                                    2nd
                                 </button>
-                                <button onClick={() => handleRunnerAction('moveToThird',1)}
-                                style={{ backgroundColor: 'lightyellow' }}
-                                    >
-                                        3rd
+                                <button onClick={() => handleRunnerAction('moveToThird', 1)}
+                                    style={{ backgroundColor: 'lightyellow' }}
+                                >
+                                    3rd
                                 </button>
-                                <button onClick={() => handleRunnerAction('score',1)}
+                                <button onClick={() => handleRunnerAction('score', 1)}
                                     style={{ backgroundColor: 'lightgreen' }}
-                                    >
-                                        Score
-                                        </button>
-                                <button 
-                                    onClick={() => handleRunnerAction('out',1)} 
+                                >
+                                    Score
+                                </button>
+                                <button
+                                    onClick={() => handleRunnerAction('out', 1)}
                                     style={{ backgroundColor: 'salmon' }}
                                 >
                                     Out
@@ -276,18 +302,18 @@ const Scoreboard: React.FC<ScoreboardProps> = ({ inning, isTop, homeScores, away
                             onClick={() => handleBaseClick(2)}
                         >{bases[2] && (
                             <div className="runner-actions2">
-                                <button onClick={() => handleRunnerAction('moveToThird',2)}
-                                style={{ backgroundColor: 'lightyellow' }}
+                                <button onClick={() => handleRunnerAction('moveToThird', 2)}
+                                    style={{ backgroundColor: 'lightyellow' }}
                                 >
-                                3rd
-                        </button>
-                                <button onClick={() => handleRunnerAction('score',2)}
+                                    3rd
+                                </button>
+                                <button onClick={() => handleRunnerAction('score', 2)}
                                     style={{ backgroundColor: 'lightgreen' }}
-                                    >
-                                        Score
-                                        </button>
-                                <button 
-                                    onClick={() => handleRunnerAction('out',2)} 
+                                >
+                                    Score
+                                </button>
+                                <button
+                                    onClick={() => handleRunnerAction('out', 2)}
                                     style={{ backgroundColor: 'salmon' }}
                                 >
                                     Out
@@ -299,13 +325,13 @@ const Scoreboard: React.FC<ScoreboardProps> = ({ inning, isTop, homeScores, away
                             onClick={() => handleBaseClick(3)}
                         >{bases[3] && (
                             <div className="runner-actions3">
-                                <button onClick={() => handleRunnerAction('score',3)}
+                                <button onClick={() => handleRunnerAction('score', 3)}
                                     style={{ backgroundColor: 'lightgreen' }}
-                                    >
-                                        Score
-                                        </button>
-                                <button 
-                                    onClick={() => handleRunnerAction('out',3)} 
+                                >
+                                    Score
+                                </button>
+                                <button
+                                    onClick={() => handleRunnerAction('out', 3)}
                                     style={{ backgroundColor: 'salmon' }}
                                 >
                                     Out
@@ -314,7 +340,7 @@ const Scoreboard: React.FC<ScoreboardProps> = ({ inning, isTop, homeScores, away
                         )}</div>
                         <div
                             className={`base ${bases[0] ? 'occupied' : ''}`}
-                            onClick={() => handleRunnerAction("Homerun",0)}
+                            onClick={() => handleRunnerAction("Homerun", 0)}
                         ></div>
                     </div>
                 </div>

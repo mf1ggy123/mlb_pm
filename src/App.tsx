@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Scoreboard from './components/Scoreboard';
 
 const App: React.FC = () => {
@@ -9,37 +9,83 @@ const App: React.FC = () => {
     const [strikes, setStrikes] = useState(0);
     const [balls, setBalls] = useState(0);
     const [isTop, setIsTop] = useState(true);
+    const [bases, setBases] = useState([false, false, false, false]);
+
+    const socketRef = useRef<WebSocket | null>(null);
 
     useEffect(() => {
-        // Create a WebSocket connection
-        const socket = new WebSocket('ws://localhost:3000'); // Replace with your WebSocket server URL
+        socketRef.current = new WebSocket("ws://127.0.0.1:8000/ws");
 
-        // Handle incoming messages
-        socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === 'updateScore') {
-                setHomeScores(data.homeScore);
-                setAwayScores(data.awayScore);
-            } else if (data.type === 'updateInning') {
-                setInning(data.inning);
-                setIsTop(data.isTop);
-            } else if (data.type === 'updateCounts') {
-                setOuts(data.outs);
-                setStrikes(data.strikes);
-                setBalls(data.balls);
-            }
+        socketRef.current.onopen = () => {
+            console.log("✅ WebSocket connected to backend!");
+            socketRef.current?.send("Hello from React!");
         };
 
-        // Handle WebSocket errors
-        socket.onerror = (error) => {
-            console.error('WebSocket error:', error);
+        socketRef.current.onmessage = (event) => {
+            console.log("📨 Received from server:", event.data);
         };
 
-        // Clean up the WebSocket connection on component unmount
+        socketRef.current.onerror = (err) => {
+            console.error("❌ WebSocket error:", err);
+        };
+
+        socketRef.current.onclose = () => {
+            console.log("🔌 WebSocket closed.");
+        };
+
         return () => {
-            socket.close();
+            socketRef.current?.close();
         };
     }, []);
+
+    // Helper to send the latest scoreboard state
+    const sendScoreboard = (customState?: any) => {
+        const scoreboardData = customState || {
+            inning,
+            isTop,
+            homeScores,
+            awayScores,
+            outs,
+            strikes,
+            balls,
+            bases,
+        };
+        socketRef.current?.send(JSON.stringify(scoreboardData));
+    };
+
+    // Handler functions to update state and send to backend
+    const handleUpdate = (updates: Partial<{
+        inning: number;
+        isTop: boolean;
+        homeScores: number;
+        awayScores: number;
+        outs: number;
+        strikes: number;
+        balls: number;
+        bases: boolean[];
+    }>) => {
+        console.log("Updating scoreboard with:", updates);
+        if (updates.inning !== undefined) setInning(updates.inning);
+        if (updates.isTop !== undefined) setIsTop(updates.isTop);
+        if (updates.homeScores !== undefined) setHomeScores(updates.homeScores);
+        if (updates.awayScores !== undefined) setAwayScores(updates.awayScores);
+        if (updates.outs !== undefined) setOuts(updates.outs);
+        if (updates.strikes !== undefined) setStrikes(updates.strikes);
+        if (updates.balls !== undefined) setBalls(updates.balls);
+        if (updates.bases !== undefined) setBases(updates.bases);
+
+        // Send the updated state (merge with current state)
+        sendScoreboard({
+            inning: updates.inning ?? inning,
+            isTop: updates.isTop ?? isTop,
+            homeScores: updates.homeScores ?? homeScores,
+            awayScores: updates.awayScores ?? awayScores,
+            outs: updates.outs ?? outs,
+            strikes: updates.strikes ?? strikes,
+            balls: updates.balls ?? balls,
+            bases: updates.bases ?? bases,
+        });
+    };
 
     return (
         <div>
@@ -51,6 +97,8 @@ const App: React.FC = () => {
                 outs={outs}
                 strikes={strikes}
                 balls={balls}
+                bases={bases}
+                onUpdate={handleUpdate}
             />
         </div>
     );
