@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Scoreboard from './components/Scoreboard';
+import Login from "./components/Login";
+import TeamSelect from "./components/TeamSelect";
+
 
 const App: React.FC = () => {
     const [inning, setInning] = useState(1);
@@ -9,19 +12,23 @@ const App: React.FC = () => {
     const [strikes, setStrikes] = useState(0);
     const [balls, setBalls] = useState(0);
     const [isTop, setIsTop] = useState(true);
-    const [bases, setBases] = useState([false, false, false, false]);
+    const [bases, setBases] = useState([0,0,0,0]);
+    const [sendUpdates, setSendUpdates] = useState(true);
 
     const socketRef = useRef<WebSocket | null>(null);
+    const gameStateSocketRef = useRef<WebSocket | null>(null);
 
     useEffect(() => {
         socketRef.current = new WebSocket("ws://127.0.0.1:8000/ws");
+
+        gameStateSocketRef.current = new WebSocket("ws://127.0.0.1:8000/game-state");
 
         socketRef.current.onopen = () => {
             console.log("✅ WebSocket connected to backend!");
             socketRef.current?.send("Hello from React!");
         };
 
-        socketRef.current.onmessage = (event) => {
+        gameStateSocketRef.current.onmessage = (event) => {
             console.log("📨 Received from server:", event.data);
         };
 
@@ -40,6 +47,7 @@ const App: React.FC = () => {
 
     // Helper to send the latest scoreboard state
     const sendScoreboard = (customState?: any) => {
+        if (!sendUpdates) return;
         const scoreboardData = customState || {
             inning,
             isTop,
@@ -50,7 +58,7 @@ const App: React.FC = () => {
             balls,
             bases,
         };
-        socketRef.current?.send(JSON.stringify(scoreboardData));
+        gameStateSocketRef.current?.send(JSON.stringify(scoreboardData));
     };
 
     // Handler functions to update state and send to backend
@@ -62,7 +70,7 @@ const App: React.FC = () => {
         outs: number;
         strikes: number;
         balls: number;
-        bases: boolean[];
+        bases: number[];
     }>) => {
         console.log("Updating scoreboard with:", updates);
         if (updates.inning !== undefined) setInning(updates.inning);
@@ -86,9 +94,31 @@ const App: React.FC = () => {
             bases: updates.bases ?? bases,
         });
     };
+    const [username, setUsername] = useState<string | null>(null);
+    const [teams, setTeams] = useState<{ home: string; away: string } | null>(null);
+
+    if (!username) {
+        return <Login onLogin={setUsername} />;
+    }
+
+    if (!teams) {
+        return <TeamSelect onSelect={(home, away) => setTeams({ home, away })} />;
+    }
 
     return (
         <div>
+            <h3>
+                {teams.away} @ {teams.home}
+            </h3>
+            <label style={{ display: "block", margin: "1em 0" }}>
+                <input
+                    type="checkbox"
+                    checked={sendUpdates}
+                    onChange={() => setSendUpdates(!sendUpdates)}
+                    style={{ marginRight: 8 }}
+                />
+                Send data through WebSocket
+            </label>
             <Scoreboard
                 inning={inning}
                 isTop={isTop}

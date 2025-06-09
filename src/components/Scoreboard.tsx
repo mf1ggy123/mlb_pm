@@ -20,7 +20,7 @@ const Scoreboard: React.FC<ScoreboardProps> = ({
             strikes: 0,
             balls: 0,
             outs: 0,
-            bases: [false, false, false, false],
+            bases: [0, 0, 0, 0], // changed from false to 0
         });
     };
 
@@ -43,11 +43,11 @@ const Scoreboard: React.FC<ScoreboardProps> = ({
         if (!isTop) {
             onUpdate({
                 isTop: true,
-                inning: inning < 9 ? inning + 1 : inning,
+                inning: inning < 10 ? inning + 1 : inning,
                 strikes: 0,
                 balls: 0,
                 outs: 0,
-                bases: [false, false, false, false],
+                bases: [0, 0, 0, 0], // changed from false to 0
             });
         } else {
             onUpdate({
@@ -55,14 +55,14 @@ const Scoreboard: React.FC<ScoreboardProps> = ({
                 strikes: 0,
                 balls: 0,
                 outs: 0,
-                bases: [false, false, false, false],
+                bases: [0, 0, 0, 0], // changed from false to 0
             });
         }
     };
 
     const handleBaseClick = (index: number) => {
         console.log(`Base ${index} clicked`);
-        const newBases = bases.map((base, i) => (i === index ? !base : base));
+        const newBases = bases.map((base, i) => (i === index ? (base === 1 ? 0 : 1) : base)); // toggle 0/1
         onUpdate({ bases: newBases });
     };
 
@@ -78,7 +78,7 @@ const Scoreboard: React.FC<ScoreboardProps> = ({
                         balls: 0,
                         outs: 0,
                         isTop: false,
-                        bases: [false, false, false, false],
+                        bases: [0, 0, 0, 0], // changed from false to 0
                     });
                 } else {
                     onUpdate({
@@ -87,7 +87,7 @@ const Scoreboard: React.FC<ScoreboardProps> = ({
                         outs: 0,
                         isTop: true,
                         inning: inning < 9 ? inning + 1 : inning,
-                        bases: [false, false, false, false],
+                        bases: [0, 0, 0, 0], // changed from false to 0
                     });
                 }
             } else {
@@ -110,14 +110,18 @@ const Scoreboard: React.FC<ScoreboardProps> = ({
                 if (bases[2]) {
                     if (bases[3]) {
                         // Score
-                        handleScore(1, !isTop);
-                        newBases[3] = false;
+                        if (!isTop) {
+                        homeScores= homeScores + 1;
+                        } else {
+                        awayScores= awayScores + 1;
+                        };
+                        newBases[3] = 0; // changed from false to 0
                     }
-                    newBases[3] = true;
+                    newBases[3] = 1; // changed from true to 1
                 }
-                newBases[2] = true;
+                newBases[2] = 1; // changed from true to 1
             }
-            newBases[1] = true;
+            newBases[1] = 1; // changed from true to 1
             onUpdate({
                 balls: 0,
                 strikes: 0,
@@ -132,6 +136,7 @@ const Scoreboard: React.FC<ScoreboardProps> = ({
                 outs: outs + 1,
                 strikes: 0,
                 balls: 0,
+                bases: bases
             });
         } else {
             // 3 outs, switch inning
@@ -141,7 +146,7 @@ const Scoreboard: React.FC<ScoreboardProps> = ({
                     strikes: 0,
                     balls: 0,
                     isTop: false,
-                    bases: [false, false, false, false],
+                    bases: [0, 0, 0, 0], // changed from false to 0
                 });
             } else {
                 onUpdate({
@@ -150,7 +155,7 @@ const Scoreboard: React.FC<ScoreboardProps> = ({
                     balls: 0,
                     isTop: true,
                     inning: inning < 9 ? inning + 1 : inning,
-                    bases: [false, false, false, false],
+                    bases: [0, 0, 0, 0], // changed from false to 0
                 });
             }
         }
@@ -160,35 +165,42 @@ const Scoreboard: React.FC<ScoreboardProps> = ({
         let newBases = [...bases];
         if (action === 'moveToSecond') {
             if (bases[baseNum]) {
-                newBases[baseNum] = false;
-                newBases[2] = true;
+                newBases[baseNum] = 0; // changed from false to 0
+                newBases[2] = 1; // changed from true to 1
             }
         } else if (action === 'moveToThird') {
             if (bases[baseNum]) {
-                newBases[baseNum] = false;
-                newBases[3] = true;
+                newBases[baseNum] = 0;
+                newBases[3] = 1;
             }
         } else if (action === 'score') {
             if (bases[baseNum]) {
-                newBases[baseNum] = false;
-                handleScore(1, !isTop);
-            }
+                newBases[baseNum] = 0;
+                if (!isTop) {
+                homeScores= homeScores + 1;
+                } else {
+                awayScores= awayScores + 1;
+                };
+                }
         } else if (action === 'out') {
             if (bases[baseNum]) {
-                newBases[baseNum] = false;
+                newBases[baseNum] = 0;
+                bases = newBases;
                 handleOutClick();
+                return
             }
         } else if (action === 'Homerun') {
-            const count = newBases.filter(Boolean).length;
-            handleScore(count + 1, !isTop);
-            newBases = [false, false, false, false];
+            const count = newBases.filter(b => b === 1).length;
+            // handleScore(count + 1, !isTop);
+            if (!isTop) {
+            homeScores= homeScores + count + 1;
+            } else {
+            awayScores= awayScores + count + 1;
+            }
+            newBases = [0, 0, 0, 0]; // changed from false to 0
         }
-        console.log(`Runner action: ${action} on base ${baseNum}`);
-        console.log('New bases state:', newBases);
-        console.log('Current bases:', bases);
-        onUpdate({ bases: newBases });
-        console.log('New bases state:', newBases);
-        console.log('Current bases:', bases);
+        onUpdate({ bases: newBases, homeScores: homeScores, awayScores: awayScores});
+
     };
 
     return (
@@ -272,25 +284,28 @@ const Scoreboard: React.FC<ScoreboardProps> = ({
                         <div
                             className={`base ${bases[1] ? 'occupied' : ''}`}
                             onClick={() => handleBaseClick(1)}
-                        >{bases[1] && (
+                        >{bases[1] === 1 && ( // changed from bases[1] to bases[1] === 1
                             <div className="runner-actions1">
-                                <button onClick={() => handleRunnerAction('moveToSecond', 1)}
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleRunnerAction('moveToSecond', 1); }}
                                     style={{ backgroundColor: 'lightblue' }}
                                 >
                                     2nd
                                 </button>
-                                <button onClick={() => handleRunnerAction('moveToThird', 1)}
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleRunnerAction('moveToThird', 1); }}
                                     style={{ backgroundColor: 'lightyellow' }}
                                 >
                                     3rd
                                 </button>
-                                <button onClick={() => handleRunnerAction('score', 1)}
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleRunnerAction('score', 1); }}
                                     style={{ backgroundColor: 'lightgreen' }}
                                 >
                                     Score
                                 </button>
                                 <button
-                                    onClick={() => handleRunnerAction('out', 1)}
+                                    onClick={(e) => { e.stopPropagation(); handleRunnerAction('out', 1); }}
                                     style={{ backgroundColor: 'salmon' }}
                                 >
                                     Out
@@ -300,20 +315,22 @@ const Scoreboard: React.FC<ScoreboardProps> = ({
                         <div
                             className={`base ${bases[2] ? 'occupied' : ''}`}
                             onClick={() => handleBaseClick(2)}
-                        >{bases[2] && (
+                        >{bases[2] === 1 && ( // changed from bases[2] to bases[2] === 1
                             <div className="runner-actions2">
-                                <button onClick={() => handleRunnerAction('moveToThird', 2)}
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleRunnerAction('moveToThird', 2); }}
                                     style={{ backgroundColor: 'lightyellow' }}
                                 >
                                     3rd
                                 </button>
-                                <button onClick={() => handleRunnerAction('score', 2)}
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleRunnerAction('score', 2); }}
                                     style={{ backgroundColor: 'lightgreen' }}
                                 >
                                     Score
                                 </button>
                                 <button
-                                    onClick={() => handleRunnerAction('out', 2)}
+                                    onClick={(e) => { e.stopPropagation(); handleRunnerAction('out', 2); }}
                                     style={{ backgroundColor: 'salmon' }}
                                 >
                                     Out
@@ -323,15 +340,16 @@ const Scoreboard: React.FC<ScoreboardProps> = ({
                         <div
                             className={`base ${bases[3] ? 'occupied' : ''}`}
                             onClick={() => handleBaseClick(3)}
-                        >{bases[3] && (
+                        >{bases[3] === 1 && ( // changed from bases[3] to bases[3] === 1
                             <div className="runner-actions3">
-                                <button onClick={() => handleRunnerAction('score', 3)}
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleRunnerAction('score', 3); }}
                                     style={{ backgroundColor: 'lightgreen' }}
                                 >
                                     Score
                                 </button>
                                 <button
-                                    onClick={() => handleRunnerAction('out', 3)}
+                                    onClick={(e) => { e.stopPropagation(); handleRunnerAction('out', 3); }}
                                     style={{ backgroundColor: 'salmon' }}
                                 >
                                     Out

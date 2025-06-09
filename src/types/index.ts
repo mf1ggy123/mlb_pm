@@ -6,7 +6,7 @@ export interface ScoreboardProps {
     outs: number;
     strikes: number;
     balls: number;
-    bases: boolean[]; // Array of 4 booleans representing the bases (1st, 2nd, 3rd, Home)
+    bases: number[]; // Array of 4 booleans representing the bases (1st, 2nd, 3rd, Home)
     onUpdate: (updates: Partial<ScoreboardProps>) => void;
 
 }
