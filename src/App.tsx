@@ -19,7 +19,7 @@ const App: React.FC = () => {
     const gameStateSocketRef = useRef<WebSocket | null>(null);
 
     useEffect(() => {
-        socketRef.current = new WebSocket("ws://127.0.0.1:8000/ws");
+        socketRef.current = new WebSocket("ws://18.116.162.178/ws");
 
         gameStateSocketRef.current = new WebSocket("ws://127.0.0.1:8000/game-state");
 
