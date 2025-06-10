@@ -19,7 +19,7 @@ const App: React.FC = () => {
     const gameStateSocketRef = useRef<WebSocket | null>(null);
 
     useEffect(() => {
-        socketRef.current = new WebSocket("ws://18.116.162.178/ws");
+        socketRef.current = new WebSocket("ws://127.0.0.1:8000/ws");
 
         gameStateSocketRef.current = new WebSocket("ws://127.0.0.1:8000/game-state");
 
@@ -107,9 +107,6 @@ const App: React.FC = () => {
 
     return (
         <div>
-            <h3>
-                {teams.away} @ {teams.home}
-            </h3>
             <label style={{ display: "block", margin: "1em 0" }}>
                 <input
                     type="checkbox"
@@ -129,6 +126,7 @@ const App: React.FC = () => {
                 balls={balls}
                 bases={bases}
                 onUpdate={handleUpdate}
+                teams={teams}
             />
         </div>
     );

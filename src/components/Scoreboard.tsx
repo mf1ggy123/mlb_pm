@@ -12,6 +12,7 @@ const Scoreboard: React.FC<ScoreboardProps> = ({
     balls,
     bases,
     onUpdate,
+    teams
 }) => {
     // Handlers now call onUpdate with new state, no local state
 
@@ -207,7 +208,7 @@ const Scoreboard: React.FC<ScoreboardProps> = ({
         <div className="container">
             <div className="scoreboard">
                 <h1 className="score-header" style={{ fontSize: '30px', textAlign: 'center', margin: '5px 0' }}>
-                    Score: Home ({homeScores}) - Away ({awayScores})
+                    Score: {teams.home} ({homeScores}) - {teams.away} ({awayScores})
                 </h1>
                 <div className="inning" style={{ fontSize: '24px', textAlign: 'center', margin: '10px 0' }}>
                     Inning: {inning} ({isTop ? 'Top' : 'Bottom'})

@@ -8,5 +8,6 @@ export interface ScoreboardProps {
     balls: number;
     bases: number[]; // Array of 4 booleans representing the bases (1st, 2nd, 3rd, Home)
     onUpdate: (updates: Partial<ScoreboardProps>) => void;
+    teams: { [key: string]: string };
 
 }
