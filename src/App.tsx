@@ -1,101 +1,102 @@
-import React, { useState, useEffect, useRef } from 'react';
-import Scoreboard from './components/Scoreboard';
+import React, { useState, useRef, useEffect } from 'react';
 import Login from "./components/Login";
 import TeamSelect from "./components/TeamSelect";
 
+const WEBSOCKET_URL = "wss://684e-18-119-11-201.ngrok-free.app/ws";
+const url = "wss://mlbstattakermab.com";
+const localUrl = "ws://localhost:8000"; // Use this for local development
 
 const App: React.FC = () => {
-    const [inning, setInning] = useState(1);
-    const [homeScores, setHomeScores] = useState(0);
-    const [awayScores, setAwayScores] = useState(0);
-    const [outs, setOuts] = useState(0);
-    const [strikes, setStrikes] = useState(0);
-    const [balls, setBalls] = useState(0);
-    const [isTop, setIsTop] = useState(true);
-    const [bases, setBases] = useState([0,0,0,0]);
-    const [sendUpdates, setSendUpdates] = useState(true);
-
+    const [username, setUsername] = useState<string | null>(null);
+    const [teams, setTeams] = useState<{ home: string; away: string } | null>(null);
+    const [marketData, setMarketData] = useState<{ home: any; away: any } | null>(null);
     const socketRef = useRef<WebSocket | null>(null);
-    const gameStateSocketRef = useRef<WebSocket | null>(null);
+    const socketRefAction = useRef<WebSocket | null>(null);
+    const [inputCount, setInputCount] = useState<number>(1);
+    const [wsConnected, setWsConnected] = useState<boolean>(false);
 
+    // Auto-reconnect logic and session restore
     useEffect(() => {
-        socketRef.current = new WebSocket("ws://127.0.0.1:8000/ws");
+        // Restore session if available
+        const savedUsername = localStorage.getItem("username");
+        const savedTeams = localStorage.getItem("teams");
+        if (savedUsername) setUsername(savedUsername);
+        if (savedTeams) setTeams(JSON.parse(savedTeams));
 
-        gameStateSocketRef.current = new WebSocket("ws://127.0.0.1:8000/game-state");
+        let ws: WebSocket | null = null;
+        let wsAction: WebSocket | null = null;
+        let reconnectTimeout: NodeJS.Timeout;
 
-        socketRef.current.onopen = () => {
-            console.log("✅ WebSocket connected to backend!");
-            socketRef.current?.send("Hello from React!");
-        };
+        function connect() {
+            ws = new WebSocket(`${url}/ws`);
+            wsAction = new WebSocket(`${url}/action`);
+            socketRef.current = ws;
+            socketRefAction.current = wsAction;
 
-        gameStateSocketRef.current.onmessage = (event) => {
-            console.log("📨 Received from server:", event.data);
-        };
+            ws.onopen = () => {
+                setWsConnected(true);
+                console.log("✅ WebSocket connected!");
+            };
+            ws.onclose = () => {
+                setWsConnected(false);
+                console.log("🔌 WebSocket closed. Attempting reconnect...");
+                reconnectTimeout = setTimeout(connect, 1500);
+            };
+            ws.onerror = (err) => {
+                setWsConnected(false);
+                console.error("❌ WebSocket error:", err);
+                ws?.close();
+            };
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.home && data.away) {
+                        setMarketData({
+                            home: data.home,
+                            away: data.away
+                        });
+                    }
+                } catch (e) {
+                    console.error("Error parsing market data:", e);
+                }
+            };
 
-        socketRef.current.onerror = (err) => {
-            console.error("❌ WebSocket error:", err);
-        };
+            wsAction.onopen = () => {};
+            wsAction.onclose = () => {};
+            wsAction.onerror = () => {};
+            wsAction.onmessage = (event) => {
+                console.log("📨 Received from server:", event.data);
+            };
+        }
 
-        socketRef.current.onclose = () => {
-            console.log("🔌 WebSocket closed.");
-        };
+        connect();
 
         return () => {
-            socketRef.current?.close();
+            ws?.close();
+            wsAction?.close();
+            if (reconnectTimeout) clearTimeout(reconnectTimeout);
         };
     }, []);
 
-    // Helper to send the latest scoreboard state
-    const sendScoreboard = (customState?: any) => {
-        if (!sendUpdates) return;
-        const scoreboardData = customState || {
-            inning,
-            isTop,
-            homeScores,
-            awayScores,
-            outs,
-            strikes,
-            balls,
-            bases,
-        };
-        gameStateSocketRef.current?.send(JSON.stringify(scoreboardData));
-    };
+    // Persist username and teams to localStorage
+    useEffect(() => {
+        if (username) localStorage.setItem("username", username);
+    }, [username]);
+    useEffect(() => {
+        if (teams) localStorage.setItem("teams", JSON.stringify(teams));
+    }, [teams]);
 
-    // Handler functions to update state and send to backend
-    const handleUpdate = (updates: Partial<{
-        inning: number;
-        isTop: boolean;
-        homeScores: number;
-        awayScores: number;
-        outs: number;
-        strikes: number;
-        balls: number;
-        bases: number[];
-    }>) => {
-        console.log("Updating scoreboard with:", updates);
-        if (updates.inning !== undefined) setInning(updates.inning);
-        if (updates.isTop !== undefined) setIsTop(updates.isTop);
-        if (updates.homeScores !== undefined) setHomeScores(updates.homeScores);
-        if (updates.awayScores !== undefined) setAwayScores(updates.awayScores);
-        if (updates.outs !== undefined) setOuts(updates.outs);
-        if (updates.strikes !== undefined) setStrikes(updates.strikes);
-        if (updates.balls !== undefined) setBalls(updates.balls);
-        if (updates.bases !== undefined) setBases(updates.bases);
-
-        // Send the updated state (merge with current state)
-        sendScoreboard({
-            inning: updates.inning ?? inning,
-            isTop: updates.isTop ?? isTop,
-            homeScores: updates.homeScores ?? homeScores,
-            awayScores: updates.awayScores ?? awayScores,
-            outs: updates.outs ?? outs,
-            strikes: updates.strikes ?? strikes,
-            balls: updates.balls ?? balls,
-            bases: updates.bases ?? bases,
-        });
+    const sendButtonData = (buttonId: number) => {
+        if (socketRefAction.current && socketRefAction.current.readyState === WebSocket.OPEN) {
+            const payload = {
+                button: buttonId,
+                count: inputCount
+            };
+            socketRefAction.current.send(JSON.stringify(payload));
+        } else {
+            alert("WebSocket is not connected.");
+        }
     };
-    const [username, setUsername] = useState<string | null>(null);
-    const [teams, setTeams] = useState<{ home: string; away: string } | null>(null);
 
     if (!username) {
         return <Login onLogin={setUsername} />;
@@ -106,28 +107,66 @@ const App: React.FC = () => {
     }
 
     return (
-        <div>
-            <label style={{ display: "block", margin: "1em 0" }}>
-                <input
-                    type="checkbox"
-                    checked={sendUpdates}
-                    onChange={() => setSendUpdates(!sendUpdates)}
-                    style={{ marginRight: 8 }}
+        <div style={{ textAlign: "center", marginTop: "2em" }}>
+            <h2>Simple WebSocket Button App</h2>
+            <div style={{ marginBottom: "1em" }}>
+                <span
+                    style={{
+                        display: "inline-block",
+                        width: 12,
+                        height: 12,
+                        borderRadius: "50%",
+                        background: wsConnected ? "#4caf50" : "#f44336",
+                        marginRight: 8,
+                        verticalAlign: "middle",
+                        border: "1px solid #888"
+                    }}
                 />
-                Send data through WebSocket
-            </label>
-            <Scoreboard
-                inning={inning}
-                isTop={isTop}
-                homeScores={homeScores}
-                awayScores={awayScores}
-                outs={outs}
-                strikes={strikes}
-                balls={balls}
-                bases={bases}
-                onUpdate={handleUpdate}
-                teams={teams}
-            />
+                <span style={{ verticalAlign: "middle" }}>
+                    {wsConnected ? "Connected" : "Disconnected"}
+                </span>
+            </div>
+            <div style={{ marginBottom: "2em" }}>
+                <div>
+                    <strong>Home Market</strong><br />
+                    Yes Ask: {marketData?.home?.yes_ask ?? "--"}<br />
+                    Yes Bid: {marketData?.home?.yes_bid ?? "--"}
+                </div>
+                <div style={{ marginTop: "1em" }}>
+                    <strong>Away Market</strong><br />
+                    Yes Ask: {marketData?.away?.yes_ask ?? "--"}<br />
+                    Yes Bid: {marketData?.away?.yes_bid ?? "--"}
+                </div>
+            </div>
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gridTemplateRows: "1fr 1fr",
+                    gap: "0.7em",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    width: "260px",
+                    margin: "2em auto"
+                }}
+            >
+                <button style={{ fontSize: "1.2em", padding: "1em" }} onClick={() => sendButtonData(1)}>Buy Home</button>
+                <button style={{ fontSize: "1.2em", padding: "1em" }} onClick={() => sendButtonData(2)}>Sell Home</button>
+                <button style={{ fontSize: "1.2em", padding: "1em" }} onClick={() => sendButtonData(3)}>Buy Away</button>
+                <button style={{ fontSize: "1.2em", padding: "1em" }} onClick={() => sendButtonData(4)}>Sell Away</button>
+            </div>
+            <div style={{ marginTop: "1.5em" }}>
+                <label>
+                    Contracts:&nbsp;
+                    <input
+                        type="number"
+                        min={1}
+                        value={inputCount}
+                        onChange={e => setInputCount(Number(e.target.value))}
+                        style={{ width: "60px", fontSize: "1em", textAlign: "center" }}
+                    />
+                </label>
+            </div>
         </div>
     );
 };

@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+const url = "https://mlbstattakermab.com";
+const localUrl = "http://localhost:8000";
 
 const Login: React.FC<{ onLogin: (username: string) => void }> = ({ onLogin }) => {
     const [username, setUsername] = useState("");
@@ -8,7 +10,7 @@ const Login: React.FC<{ onLogin: (username: string) => void }> = ({ onLogin }) =
         e.preventDefault();
         setError("");
         try {
-            const res = await fetch("http://127.0.0.1:8000/login", {
+            const res = await fetch(`${url}/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username }),

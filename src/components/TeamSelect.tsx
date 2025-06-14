@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+const url = "https://mlbstattakermab.com";
+const localUrl = "http://localhost:8000";
 
 const TEAMS = [
     "ARI", "ATL", "BAL", "BOS", "CHC", "CWS", "CIN", "CLE", "COL", "DET",
@@ -27,7 +29,7 @@ const TeamSelect: React.FC<{
             return;
         }
         try {
-            const res = await fetch("http://127.0.0.1:8000/select-teams", {
+            const res = await fetch(`${url}/select-teams`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ home: homeKey, away: awayKey }),
